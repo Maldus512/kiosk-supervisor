@@ -10,15 +10,3 @@
 [submodule "components/log.c"]
 	path = components/log
 	url = https://github.com/Maldus512/log.c.git
-[submodule "components/liblightmodbus"]
-	path = components/liblightmodbus
-	url = https://github.com/Jacajack/liblightmodbus.git
-[submodule "components/generic_embedded_libs"]
-	path = components/generic_embedded_libs
-	url = https://github.com/Maldus512/generic_embedded_libs.git
-[submodule "components/cJSON"]
-	path = components/cJSON
-	url = https://github.com/DaveGamble/cJSON.git
-[submodule "components/b64.c"]
-	path = components/b64.c
-	url = https://github.com/jwerle/b64.c.git

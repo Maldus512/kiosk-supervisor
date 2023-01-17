@@ -2,7 +2,6 @@
 #include "lvgl.h"
 #include "sdl/sdl.h"
 #include "model/model.h"
-#include "style/style.h"
 
 
 static lv_pman_t page_manager = {0};
@@ -26,10 +25,9 @@ void view_init(model_t *pmodel, void (*controller_cb)(void *, lv_pman_controller
     disp_drv.hor_res  = SDL_HOR_RES;       /*Set the horizontal resolution in pixels*/
     disp_drv.ver_res  = SDL_VER_RES;       /*Set the vertical resolution in pixels*/
 
-    style_init();
-
     lv_disp_t *disp = lv_disp_drv_register(&disp_drv); /*Register the driver and save the created display objects*/
-    lv_theme_default_init(disp, STYLE_PRIMARY_COLOR, lv_color_make(0x14, 0x14, 0x3C), 1, lv_font_default());
+    lv_theme_default_init(disp, lv_palette_darken(LV_PALETTE_PURPLE, 4), lv_palette_main(LV_PALETTE_RED), 1,
+                          lv_font_default());
 
     static lv_indev_drv_t indev_drv;
     lv_indev_drv_init(&indev_drv); /*Basic initialization*/

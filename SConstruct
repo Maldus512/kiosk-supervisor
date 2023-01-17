@@ -25,15 +25,11 @@ COMPONENTS = "components"
 CONFIG = f"{MAIN}/config"
 LVGL = f"{COMPONENTS}/lvgl"
 DRIVERS = f"{COMPONENTS}/lv_drivers"
-LIGHTMODBUS = f"{COMPONENTS}/liblightmodbus"
-GEL = f"{COMPONENTS}/generic_embedded_libs"
-CJSON = f"{COMPONENTS}/cJSON"
-B64 = f"{COMPONENTS}/b64.c"
 
 # Compilation flags
 CFLAGS = ["-Wall", "-Wextra", "-g", "-O0", ]
 CPPPATH = [COMPONENTS, f"#{MAIN}", f"#{LVGL}", f"#{CONFIG}",
-           DRIVERS, f"{COMPONENTS}/log/src", f"{LIGHTMODBUS}/include", CJSON, B64]
+           DRIVERS, f"{COMPONENTS}/log/src"]
 CPPDEFINES = ["LV_CONF_INCLUDE_SIMPLE"]
 
 
@@ -59,12 +55,6 @@ def main():
         f"{COMPONENTS}/lv_page_manager/SConscript", exports=["lv_pman_env"])
     env['CPPPATH'] += [include]
 
-    gel_env = env
-    gel_selected = ["data_structures"]
-    (gel, include) = SConscript(
-        f"{GEL}/SConscript", exports=["gel_env", "gel_selected"])
-    env['CPPPATH'] += [include]
-
     # Project sources
     sources = [File(filename) for filename in Path(
         f"{MAIN}").rglob("*.c")]  # application files
@@ -73,11 +63,8 @@ def main():
     sources += [File(filename)
                 for filename in Path(DRIVERS).rglob("*.c")]  # Drivers
     sources += [File(f"{COMPONENTS}/log/src/log.c")]
-    sources += [File(f"{CJSON}/cJSON.c")]
-    sources += [File(f"{B64}/buffer.c"),
-                File(f"{B64}/decode.c"), File(f"{B64}/encode.c")]
 
-    prog = env.Program(PROGRAM, sources + lv_pman + gel)
+    prog = env.Program(PROGRAM, sources + lv_pman)
     PhonyTargets("run", f"./{PROGRAM}", prog, env)
     compileDB = env.CompilationDatabase('build/compile_commands.json')
     env.Depends(prog, compileDB)
