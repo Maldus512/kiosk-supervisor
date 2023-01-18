@@ -33,13 +33,10 @@ Il supervisore deve lanciare e monitorare lo stato dell'applicazione; in partico
 
 ## Parametri
 
-Il supervisore deve essere modificabile nei seguenti parametri a tempo di compilazione (e.g. macro):
-
- - Risoluzione dell'interfaccia grafica
-
 Il supervisore deve essere modificabile nei seguenti parametri a tempo di esecuzione tramite flag:
 
  - Percorso dell'applicazione
+ - Percorso del file da caricare per aggiornare l'applicazione
  - Percorsi dei file di diagnostica dell'applicazione
  - Tempo e numero di tentativi prima di entrare nelle impostazioni
 
@@ -49,3 +46,7 @@ Il supervisore comunica con l'applicazione soltanto in due modi:
  2. Passando il flag `-v` all'applicazione e aspettandosi dall'esecuzione risultante la sola stampa della versione dell'applicativo. Sarebbe opportuno anche inserire un timeout per evitare che l'applicazione prosegua anziche' stampare la versione e fermarsi.
 
  
+## Dettagli implementativi
+ 
+ - Tutte le operazioni su disco devono avvenire su un thread separato da quello principale
+ - L'interfaccia grafica deve essere costruita con LVGL usando SDL2 come backend
