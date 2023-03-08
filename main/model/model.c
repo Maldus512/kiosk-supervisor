@@ -1,9 +1,10 @@
+#include "model.h"
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
-#include "model.h"
-
 
 void model_init(model_t *pmodel) {
-    assert(pmodel != NULL);
+  assert(pmodel != NULL);
+  model_set_pid(pmodel, -1);
+  pmodel->app_version = (char *)malloc(STRSIZE);
 }

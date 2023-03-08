@@ -3,19 +3,39 @@
 
 #include <stdint.h>
 
-
 typedef enum {
-    LV_PMAN_CONTROLLER_MSG_TAG_NONE = 0,
+  LV_PMAN_CONTROLLER_MSG_TAG_NONE = 0,
+  LV_PMAN_CONTROLLER_MSG_TAG_APP_START,
+  LV_PMAN_CONTROLLER_MSG_TAG_APP_START_SUCC,
+  LV_PMAN_CONTROLLER_MSG_TAG_APP_EXIT_ERROR,
+  LV_PMAN_CONTROLLER_MSG_TAG_APP_EXIT_MANY_TIMES,
+  LV_PMAN_CONTROLLER_MSG_TAG_APP_VERSION,
+  LV_PMAN_CONTROLLER_MSG_TAG_APP_UPDATE,
+  LV_PMAN_CONTROLLER_MSG_TAG_APP_UPDATE_FOUND,
+  LV_PMAN_CONTROLLER_MSG_TAG_APP_UPDATE_SUCC,
+
+  LV_PMAN_CONTROLLER_MSG_TAG_UPDATE_COPY,
+
+  LV_PMAN_CONTROLLER_MSG_TAG_EXPORT_LOGS,
+  LV_PMAN_CONTROLLER_MSG_TAG_EXPORT_LOGS_SUCC,
+  LV_PMAN_CONTROLLER_MSG_TAG_EXPORT_LOGS_ERR,
+
+  LV_PMAN_CONTROLLER_MSG_TAG_OPEN_SETTINGS,
+
 } lv_pman_controller_msg_tag_t;
 
-
 typedef struct {
-    lv_pman_controller_msg_tag_t tag;
+  lv_pman_controller_msg_tag_t tag;
 
-    union {
-        uint16_t test;
-    };
+  union {
+    uint16_t test;
+  };
 } lv_pman_controller_msg_t;
 
+typedef struct {
+  lv_pman_controller_msg_tag_t tag;
+  void *args;
+
+} lv_pman_controller_msg_io_t;
 
 #endif

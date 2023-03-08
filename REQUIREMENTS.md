@@ -20,6 +20,7 @@ Il supervisore deve lanciare e monitorare lo stato dell'applicazione; in partico
 
  - Dovra' contenere un menu' (da qui in avanti noto come "impostazioni") dal quale sara' possibile scegliere le seguenti funzioni:
     - Caricare una nuova versione dell'applicazione
+      - Copia la nuova versione al posto del precedente file
     - Esportare file di diagnosi dell'applicazione (log, core dump, etc...)
     - Lanciare l'applicazione
     - Visualizzare la versione del supervisore
