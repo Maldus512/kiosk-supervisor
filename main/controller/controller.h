@@ -15,7 +15,7 @@ struct msgbox_t {
 
 bool copy_file(const char *source_path, const char *dest_path);
 bool file_exe(const char *path);
-void get_app_version(const char *path, char *buffer);
+void get_app_version(model_t *pmodel, const char *path, char *buffer);
 
 void controller_init(model_t *pmodel);
 void controller_manage_message(void *args, lv_pman_controller_msg_t msg);

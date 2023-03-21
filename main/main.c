@@ -6,14 +6,21 @@
 #include "utils/socketq.h"
 #include "utils/system_time.h"
 #include "view/view.h"
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 int main(int argc, char **argv) {
 
-  if (argc <= 6) {
-    log_error("Incorrect number of parameters (%d), it should be at least 6",
+  if (argc < 6) {
+    log_error("Incorrect number of parameters (%d), it should be at least 5",
               argc);
     return -1;
   }
@@ -31,15 +38,15 @@ int main(int argc, char **argv) {
       .app_version = "v0",
       .app_path = argv[1],
       .update_path = argv[2],
-      .log_paths = argv + 5,
-      .n_log_paths = argc - 5,
-      .log_exp_path = "./exported",
+      .log_paths = argv + 6,
+      .n_log_paths = argc - 6,
+      .mount_path = argv[3],
       .fsocketq = &fsocketq,
       .tsocketq = &tsocketq,
       .msocketq = &msocketq,
 
-      .period = atoi(argv[3]),
-      .term_per_period = atoi(argv[4]),
+      .period = atoi(argv[4]),
+      .term_per_period = atoi(argv[5]),
       .pid = -1,
   };
 

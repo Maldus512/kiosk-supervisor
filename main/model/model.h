@@ -48,7 +48,7 @@ typedef struct {
   char *update_path;
   char **log_paths;
   int n_log_paths;
-  const char *log_exp_path;
+  char *mount_path;
   socketq_t *fsocketq; // used for fork
   socketq_t *tsocketq; // used for thread
   socketq_t *msocketq; // used for main
@@ -70,7 +70,7 @@ GETTERNSETTER(app_path, app_path)
 GETTER(update_path, update_path)
 GETTER(log_paths, log_paths)
 GETTER(n_log_paths, n_log_paths)
-GETTER(log_exp_path, log_exp_path)
+GETTERNSETTER(mount_path, mount_path)
 GETTER(fsocketq, fsocketq)
 GETTER(tsocketq, tsocketq)
 GETTER(msocketq, msocketq)

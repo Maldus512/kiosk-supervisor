@@ -259,9 +259,9 @@ static void open_page(lv_pman_handle_t handle, void *args, void *state) {
       .btn_close = true,
       .btn_ids = NULL,
       .btn_texts = NULL};
-  char export_logs_txt[100 + strlen(model_get_log_exp_path(pmodel))];
+  char export_logs_txt[100 + strlen(model_get_mount_path(pmodel))];
   sprintf(export_logs_txt, "Logs successfully exported in\n%s",
-          model_get_log_exp_path(pmodel));
+          model_get_mount_path(pmodel));
   struct msgbox_t m_export_logs_succ = {.obj = &pdata->msgbox_export_logs_succ,
                                         .title = "Export",
                                         .text = "Logs successfully exported",

@@ -22,6 +22,9 @@ typedef enum {
 
   LV_PMAN_CONTROLLER_MSG_TAG_OPEN_SETTINGS,
 
+  LV_PMAN_CONTROLLER_MSG_TAG_FORK_VERSION,
+  LV_PMAN_CONTROLLER_MSG_TAG_FORK_START,
+
 } lv_pman_controller_msg_tag_t;
 
 typedef struct {

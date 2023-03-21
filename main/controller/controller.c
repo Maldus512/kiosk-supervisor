@@ -4,6 +4,7 @@
 #include "lv_page_manager.h"
 #include "lv_page_manager_conf.h"
 #include "model/model.h"
+#include "utils/ioutils.h"
 #include "utils/socketq.h"
 #include "view/view.h"
 #include <fcntl.h>
@@ -15,49 +16,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
-#include <sys/sendfile.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 unsigned long start;
 uint term;
 
-bool copy_file(const char *source_path, const char *dest_path) {
-
-  int read_fd;
-  int write_fd;
-  struct stat stat_buf;
-  off_t offset = 0;
-
-  /* Open the input file. */
-  read_fd = open(source_path, O_RDONLY);
-  if (read_fd == -1) {
-    log_info("non riesco a leggere dal file di log %s", source_path);
-    return false;
-  }
-  /* Stat the input file to obtain its size. */
-  fstat(read_fd, &stat_buf);
-  /* Open the output file for writing, with the same permissions as the
-    source file. */
-  write_fd = open(dest_path, O_WRONLY | O_CREAT, stat_buf.st_mode);
-  if (write_fd == -1) {
-    log_info("non riesco a scrivere nel file di log %s", source_path);
-    return false;
-  }
-  /* Blast the bytes from one file to the other. */
-  sendfile(write_fd, read_fd, &offset, stat_buf.st_size);
-  /* Close up. */
-
-  close(read_fd);
-  close(write_fd);
-
-  return true;
-}
-
-bool file_exe(const char *path) { return access(path, X_OK) == 0; }
-
-void get_app_version(const char *path, char *buffer) {
+void get_app_version(model_t *pmodel, const char *path, char *buffer) {
 
   if (!file_exe(path)) {
     // just "" crashes
@@ -66,40 +30,10 @@ void get_app_version(const char *path, char *buffer) {
     return;
   }
 
-  pid_t pid;
+  log_info("get app version");
 
-  int pipefd[2];
-  pipe(pipefd);
-
-  // child
-  if ((pid = fork()) == -1) {
-    log_error("errore creazione fork");
-  } else if (pid == 0) {
-
-    // kill me if parent dies
-    prctl(PR_SET_PDEATHSIG, SIGTERM);
-
-    close(pipefd[0]); // close reading end in the child
-
-    dup2(pipefd[1], STDOUT_FILENO); // send stdout to the pipe
-    // dup2(pipefd[1], STDERR_FILENO); // send stderr to the pipe
-
-    close(pipefd[1]); // this descriptor is no longer needed
-
-    const char *argv[3] = {path, "-v", NULL};
-    execve(argv[0], (char **)argv, NULL);
-  } else {
-
-    close(pipefd[1]); // close the write end of the pipe in the parent
-
-    // while (read(pipefd[0], buffer, STRSIZE) != 0) {
-    // }
-    // read only the first STRSIZE bytes
-    read(pipefd[0], buffer, STRSIZE);
-
-    int status;
-    waitpid(pid, &status, WUNTRACED);
-  }
+  uint8_t msg = LV_PMAN_CONTROLLER_MSG_TAG_FORK_VERSION;
+  socketq_send((socketq_t *)model_get_fsocketq(pmodel), &msg);
 }
 
 void controller_io(model_t *pmodel) {
@@ -113,11 +47,11 @@ void controller_io(model_t *pmodel) {
         // checks if exists
         char *name = basename(model_get_log_paths(pmodel)[i]);
         char *fullpath =
-            malloc(strlen(model_get_log_exp_path(pmodel)) + strlen(name) + 2);
+            malloc(strlen(model_get_mount_path(pmodel)) + strlen(name) + 2);
         if (fullpath == NULL) { /* deal with error and exit */
         }
-        sprintf(fullpath, "%s/%s", model_get_log_exp_path(pmodel), name);
-        log_info("esporto %s", fullpath);
+        sprintf(fullpath, "%s/%s", model_get_mount_path(pmodel), name);
+        log_info("esporto %s in %s", model_get_log_paths(pmodel)[i], fullpath);
         r &= copy_file(model_get_log_paths(pmodel)[i], fullpath);
 
         free(fullpath);
@@ -148,7 +82,7 @@ void controller_io(model_t *pmodel) {
         model_set_pid(pmodel, -1);
 
         // kill previous running app
-        get_app_version(model_get_app_path(pmodel),
+        get_app_version(pmodel, model_get_app_path(pmodel),
                         model_get_app_version(pmodel));
 
         view_app_update_success_event();
@@ -162,11 +96,114 @@ void controller_io(model_t *pmodel) {
   pthread_exit(NULL);
 }
 
+void controller_fork_start(model_t *pmodel, const char *path) {
+  pid_t pid;
+  // child
+  if ((pid = fork()) == -1) {
+    log_error("errore creazione fork");
+  } else if (pid == 0) {
+    // kill me if parent dies
+    prctl(PR_SET_PDEATHSIG, SIGTERM);
+
+    const char *argv[2] = {path, NULL};
+    execve(argv[0], (char **)argv, NULL);
+  } else {
+    model_set_pid(pmodel, pid);
+    int status;
+    waitpid(pid, &status, WUNTRACED);
+    model_set_pid(pmodel, -1);
+    uint8_t msg;
+
+    if (WIFEXITED(status)) {
+      int es = WEXITSTATUS(status);
+      // view_app_started_successfully_event();
+      if (es == 0) {
+        if (get_millis() - start < model_get_period(pmodel) &&
+            ++term >= model_get_term_per_period(pmodel)) {
+          msg = LV_PMAN_CONTROLLER_MSG_TAG_APP_EXIT_MANY_TIMES;
+          log_info("troppe volte");
+          term = 0;
+        } else {
+          start = get_millis();
+          msg = LV_PMAN_CONTROLLER_MSG_TAG_APP_START;
+        }
+      } else {
+        log_info("error");
+        msg = LV_PMAN_CONTROLLER_MSG_TAG_APP_EXIT_ERROR;
+      }
+    }
+    socketq_send((socketq_t *)model_get_msocketq(pmodel), &msg);
+  }
+}
+
+void controller_fork_version(model_t *pmodel, const char *path) {
+  pid_t pid;
+  int pipefd[2];
+  pipe(pipefd);
+
+  if ((pid = fork()) == -1) {
+    log_error("errore creazione fork");
+  } else if (pid == 0) {
+    pid_t pid_version = fork();
+    if (pid_version == 0) {
+
+      // kill me if parent dies
+      prctl(PR_SET_PDEATHSIG, SIGTERM);
+
+      close(pipefd[0]); // close reading end in the child
+
+      dup2(pipefd[1], STDOUT_FILENO); // send stdout to the pipe
+      // dup2(pipefd[1], STDERR_FILENO); // send stderr to the pipe
+
+      close(pipefd[1]); // this descriptor is no longer needed
+
+      const char *argv[3] = {path, "-v", NULL};
+      execve(argv[0], (char **)argv, NULL);
+      _exit(0);
+    }
+
+    pid_t pid_timer = fork();
+    if (pid_timer == 0) {
+      prctl(PR_SET_PDEATHSIG, SIGTERM);
+
+      sleep(1);
+
+      _exit(0);
+    }
+
+    pid_t first_pid = wait(NULL);
+    if (first_pid == pid_version)
+      kill(pid_timer, SIGKILL);
+    else {
+      kill(pid_version, SIGKILL);
+      _exit(EXIT_FAILURE);
+    }
+
+    _exit(0);
+  } else {
+    close(pipefd[1]); // close the write end of the pipe in the parent
+    int status;
+    waitpid(pid, &status, WUNTRACED);
+
+    status = WEXITSTATUS(status);
+    if (status == EXIT_FAILURE) {
+      model_set_app_version(pmodel, "timeout");
+      return;
+    }
+
+    char *buffer = model_get_app_version(pmodel);
+
+    while (read(pipefd[0], buffer, STRSIZE) != 0) {
+    }
+
+    log_info("version (%s)\n", buffer);
+  }
+}
+
 void controller_fork(model_t *pmodel) {
   uint8_t msg = 99;
   for (;;) {
     socketq_receive((socketq_t *)(pmodel->fsocketq), &msg);
-    pid_t pid;
 
     int res = -1;
     // checks if exists
@@ -177,42 +214,15 @@ void controller_fork(model_t *pmodel) {
       continue;
     }
 
-    // child
-    if ((pid = fork()) == -1) {
-      log_error("errore creazione fork");
-    } else if (pid == 0) {
-      // kill me if parent dies
-      prctl(PR_SET_PDEATHSIG, SIGTERM);
-
-      log_info("avvio in app %d", msg);
-      const char *argv[2] = {model_get_app_path(pmodel), NULL};
-      execve(argv[0], (char **)argv, NULL);
-    } else {
-      model_set_pid(pmodel, pid);
-      int status;
-      waitpid(pid, &status, WUNTRACED);
-      model_set_pid(pmodel, -1);
-      uint8_t msg;
-
-      if (WIFEXITED(status)) {
-        int es = WEXITSTATUS(status);
-        // view_app_started_successfully_event();
-        if (es == 0) {
-          if (get_millis() - start < model_get_period(pmodel) &&
-              ++term >= model_get_term_per_period(pmodel)) {
-            msg = LV_PMAN_CONTROLLER_MSG_TAG_APP_EXIT_MANY_TIMES;
-            log_info("troppe volte");
-            term = 0;
-          } else {
-            start = get_millis();
-            msg = LV_PMAN_CONTROLLER_MSG_TAG_APP_START;
-          }
-        } else {
-          log_info("error");
-          msg = LV_PMAN_CONTROLLER_MSG_TAG_APP_EXIT_ERROR;
-        }
-      }
-      socketq_send((socketq_t *)model_get_msocketq(pmodel), &msg);
+    switch (msg) {
+    case LV_PMAN_CONTROLLER_MSG_TAG_FORK_VERSION: {
+      controller_fork_version(pmodel, model_get_app_path(pmodel));
+      break;
+    }
+    case LV_PMAN_CONTROLLER_MSG_TAG_FORK_START: {
+      controller_fork_start(pmodel, model_get_app_path(pmodel));
+      break;
+    }
     }
   }
   pthread_exit(NULL);
@@ -231,19 +241,10 @@ void controller_get_app_version(model_t *pmodel) {
 
   char buffer[1024] = {0};
 
-  get_app_version(model_get_app_path(pmodel), buffer);
+  get_app_version(pmodel, model_get_app_path(pmodel), buffer);
 
   model_set_app_version(pmodel, buffer);
   printf("vers %s\n", model_get_app_version(pmodel));
-}
-
-bool need_update_app(const char *path, const char *curr_ver) {
-
-  char buffer[1024] = {0};
-
-  get_app_version(path, buffer);
-
-  return buffer[0] != '\0' && strcmp(curr_ver, buffer) != 0;
 }
 
 void controller_update_app(model_t *pmodel) {
@@ -254,21 +255,15 @@ void controller_update_app(model_t *pmodel) {
     view_app_update_error_event();
     return;
   }
-  if (!need_update_app(model_get_update_path(pmodel),
-                       model_get_app_version(pmodel))) {
-    log_info("applicazione gia' aggiornata");
-    view_app_update_already_event();
-    return;
-  }
+
+  uint8_t msg = LV_PMAN_CONTROLLER_MSG_TAG_UPDATE_COPY;
+  socketq_send((socketq_t *)model_get_tsocketq(pmodel), &msg);
 
   // TODO: deve per forza passare dalla view o puo' direttamente parlare con
   // il controller ???
   // uint8_t msg = LV_PMAN_CONTROLLER_MSG_TAG_APP_UPDATE_FOUND;
   // socketq_send((socketq_t *)model_get_msocketq(pmodel), &msg);
   view_app_update_found_event();
-
-  uint8_t msg = LV_PMAN_CONTROLLER_MSG_TAG_UPDATE_COPY;
-  socketq_send((socketq_t *)model_get_tsocketq(pmodel), &msg);
 }
 
 void controller_init(model_t *pmodel) {
@@ -281,8 +276,9 @@ void controller_init(model_t *pmodel) {
   start = get_millis();
   term = 0;
 
-  get_app_version(model_get_app_path(pmodel), model_get_app_version(pmodel));
-  log_info("ver (%s)", model_get_app_version(pmodel));
+  get_app_version(pmodel, model_get_app_path(pmodel),
+                  model_get_app_version(pmodel));
+  // log_info("ver (%s)", model_get_app_version(pmodel));
 
   view_change_page(pmodel, page_black);
   controller_start_app(pmodel);
@@ -320,15 +316,22 @@ void controller_open_settings(model_t *pmodel) {
 
 void controller_manage(model_t *pmodel) {
 
-  // if (model_get_settings_open(pmodel) &&
-  //     !model_get_msgbox_update_open(pmodel) &&
-  //     need_update_app(model_get_update_path(pmodel),
-  //                     model_get_app_version(pmodel))) {
-  //   log_info("applicazione da aggiornare");
-  //   view_app_update_found_event();
-  //   model_set_msgbox_update_open(pmodel, true);
-  //   // controller_update_app(pmodel);
-  // }
+  if (check_device()) {
+    if (!check_mount(model_get_mount_path(pmodel))) {
+      if (mount_device(model_get_mount_path(pmodel))) {
+        // at this point usb should be mounted
+        if (!model_get_msgbox_update_open(pmodel)) {
+          log_info("applicazione da aggiornare");
+          view_change_page(pmodel, page_settings);
+          model_set_msgbox_update_open(pmodel, true);
+          view_app_update_found_event();
+        }
+      }
+    }
+  } else if (check_mount(model_get_mount_path(pmodel))) {
+    log_info("device not detected and unmounted");
+    umount_device(model_get_mount_path(pmodel));
+  }
 
   uint8_t msg = 0;
   socketq_receive_nonblock((socketq_t *)model_get_msocketq(pmodel), &msg, 10);
@@ -367,7 +370,7 @@ void controller_manage(model_t *pmodel) {
 void controller_start_app(model_t *pmodel) {
   if (model_get_pid(pmodel) == -1) {
     log_info("avvio applicazione");
-    uint8_t e = 3;
+    uint8_t e = LV_PMAN_CONTROLLER_MSG_TAG_FORK_START;
     socketq_send((socketq_t *)model_get_fsocketq(pmodel), &e);
   } else {
     log_info("applicazione gia' avviata");
