@@ -9,13 +9,14 @@
 
 bool copy_file(const char *source_path, const char *dest_path) {
 
-  int read_fd;
-  int write_fd;
+  FILE *read_f, *write_f;
+  int read_fd, write_fd;
   struct stat stat_buf;
   off_t offset = 0;
 
   /* Open the input file. */
-  read_fd = open(source_path, O_RDONLY);
+  read_f = fopen(source_path, "r");
+  read_fd = fileno(read_f);
   if (read_fd == -1) {
     log_info("non riesco a leggere dal file di log %s", source_path);
     return false;
@@ -24,7 +25,8 @@ bool copy_file(const char *source_path, const char *dest_path) {
   fstat(read_fd, &stat_buf);
   /* Open the output file for writing, with the same permissions as the
     source file. */
-  write_fd = open(dest_path, O_WRONLY | O_CREAT, stat_buf.st_mode);
+  write_f = fopen(dest_path, "w");
+  write_fd = fileno(write_f);
   if (write_fd == -1) {
     log_info("non riesco a scrivere nel file di log %s", dest_path);
     return false;
@@ -33,13 +35,16 @@ bool copy_file(const char *source_path, const char *dest_path) {
   sendfile(write_fd, read_fd, &offset, stat_buf.st_size);
   /* Close up. */
 
-  close(read_fd);
-  close(write_fd);
+  fclose(read_f);
+  fclose(write_f);
 
   return true;
 }
 
-bool file_exe(const char *path) { return access(path, X_OK) == 0; }
+bool file_exe(const char *path) {
+  struct stat s;
+  return (stat(path, &s) == 0 && s.st_mode & S_IXUSR);
+}
 
 bool check_device() {
   struct stat s;
