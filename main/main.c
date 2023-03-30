@@ -2,7 +2,6 @@
 #include "log.h"
 #include "lvgl.h"
 #include "model/model.h"
-#include "sdl/sdl.h"
 #include "utils/socketq.h"
 #include "utils/system_time.h"
 #include "view/view.h"
@@ -16,6 +15,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#if USE_EVDEV
+#include "indev/evdev.h"
+#endif
+#if USE_FBDEV
+#include "display/fbdev.h"
+#endif
+#if USE_SDL
+#include "sdl/sdl.h"
+#endif
 
 int main(int argc, char **argv) {
 
@@ -57,7 +65,15 @@ int main(int argc, char **argv) {
   log_info("log totali %d", model.n_log_paths);
 
   lv_init();
+#if USE_FBDEV
+  fbdev_init();
+#endif
+#if USE_EDEV
+  evdev_init();
+#endif
+#if USE_SDL
   sdl_init();
+#endif
 
   model_init(&model);
   view_init(&model, controller_manage_message);

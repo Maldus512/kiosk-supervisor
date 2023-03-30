@@ -3,14 +3,25 @@
 #include "lv_page_manager_conf.h"
 #include "lvgl.h"
 #include "model/model.h"
-#include "sdl/sdl.h"
 #include "src/misc/lv_color.h"
+#if USE_EVDEV
+#include "indev/evdev.h"
+#endif
+#if USE_FBDEV
+#include "display/fbdev.h"
+#endif
+#if USE_SDL
+#include "sdl/sdl.h"
+#endif
+
+#define WIN_HOR_RES 800
+#define WIN_VER_RES 450
 
 static lv_pman_t page_manager = {0};
 
 void view_init(model_t *pmodel,
                void (*controller_cb)(void *, lv_pman_controller_msg_t)) {
-#define BUFFER_SIZE (SDL_HOR_RES * SDL_VER_RES)
+#define BUFFER_SIZE (WIN_HOR_RES * WIN_VER_RES)
   /*A static or global variable to store the buffers*/
   static lv_disp_draw_buf_t disp_buf;
 
@@ -25,10 +36,18 @@ void view_init(model_t *pmodel,
       disp_drv; /*A variable to hold the drivers. Must be static or global.*/
   lv_disp_drv_init(&disp_drv);   /*Basic initialization*/
   disp_drv.draw_buf = &disp_buf; /*Set an initialized buffer*/
+
+#if USE_FBDEV
+  disp_drv.flush_cb =
+      fbdev_flush; /*Set a flush callback to draw to the display*/
+#endif
+#if USE_SDL
   disp_drv.flush_cb =
       sdl_display_flush; /*Set a flush callback to draw to the display*/
-  disp_drv.hor_res = SDL_HOR_RES; /*Set the horizontal resolution in pixels*/
-  disp_drv.ver_res = SDL_VER_RES; /*Set the vertical resolution in pixels*/
+#endif
+
+  disp_drv.hor_res = WIN_HOR_RES; /*Set the horizontal resolution in pixels*/
+  disp_drv.ver_res = WIN_VER_RES; /*Set the vertical resolution in pixels*/
 
   lv_disp_t *disp = lv_disp_drv_register(
       &disp_drv); /*Register the driver and save the created display objects*/
@@ -38,7 +57,13 @@ void view_init(model_t *pmodel,
   static lv_indev_drv_t indev_drv;
   lv_indev_drv_init(&indev_drv); /*Basic initialization*/
   indev_drv.type = LV_INDEV_TYPE_POINTER;
+
+#if USE_EDEV
+  indev_drv.read_cb = evdev_read;
+#endif
+#if USE_SDL
   indev_drv.read_cb = sdl_mouse_read;
+#endif
 
   static lv_indev_t *indev = NULL;
   indev = lv_indev_drv_register(&indev_drv);

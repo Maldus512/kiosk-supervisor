@@ -45,9 +45,23 @@ def main():
         "CPPPATH": CPPPATH,
         "CPPDEFINES": CPPDEFINES,
         "CCFLAGS": CFLAGS,
-        "LIBS": ["-lSDL2", "-lpthread"],
+        "LIBS": ["-lpthread"],
+        # "CC": "/home/xgampx/Desktop/UNI/TIROCINIO/buildroot/aarch64-buildroot-linux-uclibc_sdk-buildroot/bin/aarch64-buildroot-linux-uclibc-gcc",
     }
     env = Environment(**env_options)
+
+    debug = ARGUMENTS.get('TARGET_DEBUG', '0')
+    
+    if (debug == '0'):
+        env['CC'] = "/home/xgampx/Desktop/UNI/TIROCINIO/buildroot/aarch64-buildroot-linux-uclibc_sdk-buildroot/bin/aarch64-buildroot-linux-uclibc-gcc"
+        env['CPPDEFINES'].append(("USE_FBDEV", 1))
+        env['CPPDEFINES'].append(("USE_EVDEV", 1))
+        env['CPPDEFINES'].append(("USE_SDL", 0))
+
+    if (debug == '1'):
+        env['LIBS'].append("-lSDL2")
+        env['CPPDEFINES'].append(("USE_SDL", 1))
+
     env.Tool("compilation_db")
 
     lv_pman_env = env
