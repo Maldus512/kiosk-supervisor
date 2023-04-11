@@ -17,7 +17,7 @@ def PhonyTargets(
 
 
 # Name of the application
-PROGRAM = "app"
+PROGRAM = "supervisor"
 
 # Project paths
 MAIN = "main"
@@ -33,11 +33,17 @@ CPPPATH = [COMPONENTS, f"#{MAIN}", f"#{LVGL}", f"#{CONFIG}",
 CPPDEFINES = ["LV_CONF_INCLUDE_SIMPLE"]
 
 
+def getIpAddr():
+    return ARGUMENTS.get('ip', "")
+
+
 def main():
     # If not specified, guess how many threads the task can be split into
     num_cpu = multiprocessing.cpu_count()
     SetOption("num_jobs", num_cpu)
     print("Running with -j {}".format(GetOption("num_jobs")))
+
+    debug = ARGUMENTS.get('TARGET_DEBUG', '0')
 
     env_options = {
         # Include the external environment to access DISPLAY and run the app as a target
@@ -46,14 +52,13 @@ def main():
         "CPPDEFINES": CPPDEFINES,
         "CCFLAGS": CFLAGS,
         "LIBS": ["-lpthread"],
-        # "CC": "/home/xgampx/Desktop/UNI/TIROCINIO/buildroot/aarch64-buildroot-linux-uclibc_sdk-buildroot/bin/aarch64-buildroot-linux-uclibc-gcc",
+        "CC": "/home/maldus/Mount/Data/Projects/buildrpi/output/host/bin/aarch64-buildroot-linux-uclibc-gcc" if not debug else "gcc"
     }
     env = Environment(**env_options)
 
-    debug = ARGUMENTS.get('TARGET_DEBUG', '0')
-    
+    # env['CC'] = ARGUMENTS.get("cc", "gcc")
+
     if (debug == '0'):
-        env['CC'] = "/home/xgampx/Desktop/UNI/TIROCINIO/buildroot/aarch64-buildroot-linux-uclibc_sdk-buildroot/bin/aarch64-buildroot-linux-uclibc-gcc"
         env['CPPDEFINES'].append(("USE_FBDEV", 1))
         env['CPPDEFINES'].append(("USE_EVDEV", 1))
         env['CPPDEFINES'].append(("USE_SDL", 0))
@@ -79,7 +84,14 @@ def main():
     sources += [File(f"{COMPONENTS}/log/src/log.c")]
 
     prog = env.Program(PROGRAM, sources + lv_pman)
+
     PhonyTargets("run", f"./{PROGRAM}", prog, env)
+
+    PhonyTargets('ssh', 'ssh -o StrictHostKeyChecking=no -o PubkeyAcceptedAlgorithms=+ssh-rsa root@{}'.format(getIpAddr()), None)
+
+    PhonyTargets('scp', 'scp -O -o StrictHostKeyChecking=no -o PubkeyAcceptedAlgorithms=+ssh-rsa {} root@{}:/tmp/supervisor'.format(
+        PROGRAM, getIpAddr()), [prog])
+
     compileDB = env.CompilationDatabase('build/compile_commands.json')
     env.Depends(prog, compileDB)
 

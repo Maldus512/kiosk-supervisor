@@ -15,7 +15,7 @@
 #endif
 
 #define WIN_HOR_RES 800
-#define WIN_VER_RES 450
+#define WIN_VER_RES 480
 
 static lv_pman_t page_manager = {0};
 

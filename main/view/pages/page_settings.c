@@ -472,7 +472,7 @@ static void update_page(model_t *pmodel, struct page_data *pdata) {
   (void)pmodel;
   (void)pdata;
 
-  if (pdata->msgbox) {
+  if (pdata->msgbox != NULL) {
     if (pdata->msgbox_showing)
       lv_obj_clear_flag(pdata->msgbox, LV_OBJ_FLAG_HIDDEN);
     else
