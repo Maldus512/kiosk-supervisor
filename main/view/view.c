@@ -20,7 +20,12 @@
 static lv_pman_t page_manager = {0};
 
 void view_init(model_t *pmodel,
-               void (*controller_cb)(void *, lv_pman_controller_msg_t)) {
+               void (*controller_cb)(void *, lv_pman_controller_msg_t),
+               void (*flush_cb)(struct _lv_disp_drv_t *disp_drv,
+                                const lv_area_t *area, lv_color_t *color_p),
+               void (*read_cb)(struct _lv_indev_drv_t *indev_drv,
+                               lv_indev_data_t *data)) {
+
 #define BUFFER_SIZE (WIN_HOR_RES * WIN_VER_RES)
   /*A static or global variable to store the buffers*/
   static lv_disp_draw_buf_t disp_buf;
@@ -37,14 +42,7 @@ void view_init(model_t *pmodel,
   lv_disp_drv_init(&disp_drv);   /*Basic initialization*/
   disp_drv.draw_buf = &disp_buf; /*Set an initialized buffer*/
 
-#if USE_FBDEV
-  disp_drv.flush_cb =
-      fbdev_flush; /*Set a flush callback to draw to the display*/
-#endif
-#if USE_SDL
-  disp_drv.flush_cb =
-      sdl_display_flush; /*Set a flush callback to draw to the display*/
-#endif
+  disp_drv.flush_cb = flush_cb; /*Set a flush callback to draw to the display*/
 
   disp_drv.hor_res = WIN_HOR_RES; /*Set the horizontal resolution in pixels*/
   disp_drv.ver_res = WIN_VER_RES; /*Set the vertical resolution in pixels*/
@@ -58,12 +56,7 @@ void view_init(model_t *pmodel,
   lv_indev_drv_init(&indev_drv); /*Basic initialization*/
   indev_drv.type = LV_INDEV_TYPE_POINTER;
 
-#if USE_EDEV
-  indev_drv.read_cb = evdev_read;
-#endif
-#if USE_SDL
-  indev_drv.read_cb = sdl_mouse_read;
-#endif
+  indev_drv.read_cb = read_cb;
 
   static lv_indev_t *indev = NULL;
   indev = lv_indev_drv_register(&indev_drv);

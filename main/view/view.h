@@ -5,7 +5,12 @@
 #include "model/model.h"
 
 void view_init(model_t *pmodel,
-               void (*controller_cb)(void *, lv_pman_controller_msg_t));
+               void (*controller_cb)(void *, lv_pman_controller_msg_t),
+               void (*flush_cb)(struct _lv_disp_drv_t *disp_drv,
+                                const lv_area_t *area, lv_color_t *color_p),
+               void (*read_cb)(struct _lv_indev_drv_t *indev_drv,
+                               lv_indev_data_t *data));
+
 void view_change_page(model_t *pmodel, lv_pman_page_t page);
 void view_user_event(lv_pman_user_event_tag_t tag);
 

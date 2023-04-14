@@ -52,7 +52,7 @@ def main():
         "CPPDEFINES": CPPDEFINES,
         "CCFLAGS": CFLAGS,
         "LIBS": ["-lpthread"],
-        "CC": "/home/maldus/Mount/Data/Projects/buildrpi/output/host/bin/aarch64-buildroot-linux-uclibc-gcc" if debug == "0" else "gcc"
+        "CC": "/home/xgampx/Desktop/UNI/TIROCINIO/buildroot/aarch64-buildroot-linux-uclibc_sdk-buildroot/bin/aarch64-buildroot-linux-uclibc-gcc" if debug == "0" else "gcc"
     }
     env = Environment(**env_options)
 
@@ -85,13 +85,19 @@ def main():
 
     prog = env.Program(PROGRAM, sources + lv_pman)
 
+    print( env['CPPDEFINES'])
+
     PhonyTargets("run", f"./{PROGRAM}", prog, env)
 
-    legacy_flags = "-o StrictHostKeyChecking=no -o PubkeyAcceptedAlgorithms=+ssh-rsa"
+    legacy_flags = "-o StrictHostKeyChecking=no -o PubkeyAcceptedAlgorithms=+ssh-rsa -i ./id_rsa"
 
     PhonyTargets(
         'kill-remote',
         f"ssh {legacy_flags} root@{getIpAddr()} 'killall gdbserver; killall app; killall sh'; true", None)
+
+    PhonyTargets(
+        'delete-supervisor',
+        f"ssh {legacy_flags} root@{getIpAddr()} 'rm /tmp/supervisor'; true", None)
 
     PhonyTargets(
         'ssh', 'ssh {} root@{}'.format(legacy_flags, getIpAddr()), None)
@@ -102,7 +108,7 @@ def main():
     PhonyTargets(
         "run-remote",
         "ssh {} root@{} /tmp/supervisor".format(legacy_flags, getIpAddr()),
-        "scp")
+        ["delete-supervisor", "scp"])
 
     PhonyTargets(
         "debug",
@@ -113,3 +119,4 @@ def main():
 
 
 main()
+

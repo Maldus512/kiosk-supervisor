@@ -57,6 +57,9 @@ static void *create_page(void *args, void *extra) {
   struct page_data *pdata = lv_mem_alloc(sizeof(struct page_data));
   assert(pdata != NULL);
 
+  pdata->msgbox = NULL;
+  pdata->msgbox_showing = false;
+
   return pdata;
 }
 
@@ -324,6 +327,7 @@ static void open_page(lv_pman_handle_t handle, void *args, void *state) {
     create_menu_btn(handle, btn_ids[i], btn_texts[i], y);
     y += 60;
   }
+
   for (uint8_t i = 0; i < msgboxes_n; i++) {
     create_msgbox(handle, msgboxes[i]);
   }
@@ -357,7 +361,7 @@ static lv_pman_msg_t process_page_event(void *args, void *state,
         view_app_start_event();
         break;
       case BTN_START_APP_RESTART:
-        log_info("riavvio");
+        log_info("Restarting");
         controller_stop_app(pmodel);
         controller_start_app(pmodel);
         break;
@@ -365,12 +369,10 @@ static lv_pman_msg_t process_page_event(void *args, void *state,
         hide_msgbox(pmodel, pdata);
         break;
       case BTN_SUP_VERSION:
-        pdata->msgbox = pdata->msgbox_sup_version;
-        pdata->msgbox_showing = true;
+        show_msgbox(pmodel, pdata, pdata->msgbox_sup_version);
         break;
       case BTN_APP_VERSION:
-        pdata->msgbox = pdata->msgbox_app_version;
-        pdata->msgbox_showing = true;
+        show_msgbox(pmodel, pdata, pdata->msgbox_app_version);
         log_info("ver (%s)", model_get_app_version(pmodel));
         change_label_msgbox(pdata->msgbox, model_get_app_version(pmodel));
         break;
@@ -464,6 +466,7 @@ static void show_msgbox(model_t *pmodel, struct page_data *pdata,
   update_page(pmodel, pdata);
 }
 static void hide_msgbox(model_t *pmodel, struct page_data *pdata) {
+  pdata->msgbox = NULL;
   pdata->msgbox_showing = false;
   update_page(pmodel, pdata);
 }

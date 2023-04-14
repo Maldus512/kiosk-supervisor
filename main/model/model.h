@@ -56,6 +56,8 @@ typedef struct {
   uint period;
   uint term_per_period;
 
+  uint black_screen_timer;
+
   pid_t pid;
 
   bool settings_open;
@@ -76,6 +78,7 @@ GETTER(tsocketq, tsocketq)
 GETTER(msocketq, msocketq)
 GETTER(period, period)
 GETTER(term_per_period, term_per_period)
+GETTER(black_screen_timer, black_screen_timer)
 GETTERNSETTER(pid, pid)
 GETTERNSETTER(settings_open, settings_open)
 GETTERNSETTER(msgbox_update_open, msgbox_update_open)
