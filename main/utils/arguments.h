@@ -12,7 +12,7 @@ typedef struct {
     size_t n_log_paths;
     char **log_paths;
 
-    uint32_t period; 
+    uint32_t period;
     uint16_t term_per_period;
 } arguments_t;
 

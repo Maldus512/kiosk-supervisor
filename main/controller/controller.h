@@ -5,12 +5,12 @@
 #include "model/model.h"
 
 struct msgbox_t {
-  lv_obj_t **obj;
-  char *title;
-  char *text;
-  bool btn_close;
-  int *btn_ids;
-  char **btn_texts;
+    lv_obj_t **obj;
+    char      *title;
+    char      *text;
+    bool       btn_close;
+    int       *btn_ids;
+    char     **btn_texts;
 };
 
 bool copy_file(const char *source_path, const char *dest_path);
